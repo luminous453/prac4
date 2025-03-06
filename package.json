@@ -1,10 +1,27 @@
 {
-  "name": "${PROJECT_NAME}",
+  "name": "pr3",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "admin_server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "private": true
+  "private": true,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "express": "^4.21.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luminous453/prac4.git"
+  },
+  "bugs": {
+    "url": "https://github.com/luminous453/prac4/issues"
+  },
+  "homepage": "https://github.com/luminous453/prac3#readme",
+  "description": ""
 }
