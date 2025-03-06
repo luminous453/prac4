@@ -1,72 +1,74 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const { graphqlHTTP } = require('express-graphql');
+const { buildSchema } = require('graphql');
+const WebSocket = require('ws');
+const http = require('http');
+const fs = require('fs');
 
 const app = express();
-app.use(express.static('public'))
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/user.html')
-})
+    res.sendFile(__dirname + '/public/user.html');
+});
 
 const PORT = 8080;
 
-const swaggerJsDoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
-const fs = require('fs')
+// GraphQL схема
+const schema = buildSchema(`
+    type Category {
+        id: ID!
+        name: String!
+    }
 
-// Swagger документация
-const swaggerOptions = {
-    swaggerDefinition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Task Management API',
-            version: '1.0.0',
-            description: 'API для управления задачами',
-        },
-        servers: [
-            {
-                url: `http://localhost:${PORT}`,
-            },
-        ],
+    type Product {
+        id: ID!
+        name: String!
+        categoryIds: [ID!]!
+    }
+
+    type Query {
+        products: [Product]
+        categories: [Category]
+    }
+`);
+
+// Корневой резолвер
+const root = {
+    products: () => {
+        const data = JSON.parse(fs.readFileSync('./data.json', 'utf-8'));
+        return data.products;
     },
-    apis: ['user_openapi.yaml'], // укажите путь к файлам с аннотациями
+    categories: () => {
+        const data = JSON.parse(fs.readFileSync('./data.json', 'utf-8'));
+        return data.categories;
+    }
 };
 
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/graphql', graphqlHTTP({
+    schema: schema,
+    rootValue: root,
+    graphiql: true,
+}));
 
+// WebSocket соединение
+wss.on('connection', (ws) => {
+    console.log('Client connected');
 
-// Middleware для парсинга JSON
-app.use(bodyParser.json());
+    ws.on('message', (message) => {
+        console.log(`Received message: ${message}`);
+        ws.send(`Echo: ${message}`);
+    });
 
-
-// Получить список данных
-app.get('/products', (req, res) => {
-    fs.readFile('./data.json', 'utf-8', function(err, data) {
-        if (err) throw err
-
-        let jsonData = JSON.parse(data);
-        let categoryIdToName = {}
-        for (const category of jsonData.categories) {
-            categoryIdToName[category.id] = category.name;
-        }
-
-        let result = {};
-        for (const product of jsonData.products) {
-            for (const categoryId of product.categoryIds) {
-                let categoryName = categoryIdToName[categoryId];
-                if (result.hasOwnProperty(categoryName)) {
-                    result[categoryName].push(product);
-                } else {
-                    result[categoryName] = [product];
-                }
-            }
-        }
-        res.json(result);
+    ws.on('close', () => {
+        console.log('Client disconnected');
     });
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
-    console.log("Server is running on http://localhost:", PORT);
+server.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
